@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>分镜表 - 微信引导入口</title>
+    <style>
+      :root {
+        --bg: #f6f3ee;
+        --paper: #fffdf9;
+        --ink: #1f1c19;
+        --line: #d9d1c5;
+        --accent: #1f6feb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 10% 10%, #ffffff 0, #f6f3ee 42%),
+          radial-gradient(circle at 90% 90%, #f0ebe2 0, #f6f3ee 40%);
+      }
+
+      .container {
+        min-height: 100vh;
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 16px 32px;
+      }
+
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 18px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 22px;
+      }
+
+      p {
+        margin: 0 0 10px;
+        line-height: 1.6;
+      }
+
+      ol {
+        margin: 8px 0 14px 20px;
+        padding: 0;
+      }
+
+      li {
+        margin-bottom: 6px;
+      }
+
+      .actions {
+        display: grid;
+        gap: 8px;
+      }
+
+      button,
+      a.button {
+        display: inline-block;
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: #fff;
+        color: var(--ink);
+        text-decoration: none;
+        text-align: center;
+        font: inherit;
+      }
+
+      .primary {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+      }
+
+      .hint {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #6a6258;
+      }
+
+      #wechat-guide {
+        display: none;
+      }
+
+      #normal-tip {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section id="wechat-guide" class="card">
+        <h1>请在 Safari 打开</h1>
+        <p>微信内置浏览器对本地存储和导出能力有限，可能导致分镜数据与图片异常。</p>
+        <ol>
+          <li>点击右上角 <strong>...</strong></li>
+          <li>选择 <strong>在 Safari 打开</strong></li>
+          <li>在 Safari 中即可完整使用导入、整理、PDF/PNG 导出</li>
+        </ol>
+        <div class="actions">
+          <button id="copy-link-btn" type="button" class="primary">复制 Safari 打开链接</button>
+          <a id="wechat-continue-link" class="button" href="./storyboard-standalone.html"
+            >继续在微信中打开（可能受限）</a
+          >
+        </div>
+        <p id="copy-status" class="hint"></p>
+      </section>
+
+      <section id="normal-tip" class="card">
+        <h1>正在进入分镜 App...</h1>
+        <p>如果没有自动跳转，请点击下面按钮。</p>
+        <a class="button primary" href="./storyboard-standalone.html">进入分镜 App</a>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        var isWechat = /MicroMessenger/i.test(navigator.userAgent || "");
+        var guideEl = document.getElementById("wechat-guide");
+        var normalEl = document.getElementById("normal-tip");
+        var copyBtn = document.getElementById("copy-link-btn");
+        var copyStatus = document.getElementById("copy-status");
+        var targetUrl = new URL("./storyboard-standalone.html", window.location.href).toString();
+
+        if (isWechat) {
+          guideEl.style.display = "block";
+        } else {
+          normalEl.style.display = "block";
+          window.location.replace(targetUrl);
+        }
+
+        copyBtn.addEventListener("click", async function () {
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(targetUrl);
+            } else {
+              var input = document.createElement("input");
+              input.value = targetUrl;
+              document.body.appendChild(input);
+              input.select();
+              document.execCommand("copy");
+              input.remove();
+            }
+            copyStatus.textContent = "链接已复制。请到 Safari 粘贴打开。";
+          } catch (error) {
+            copyStatus.textContent = "复制失败，请手动复制当前页面链接。";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

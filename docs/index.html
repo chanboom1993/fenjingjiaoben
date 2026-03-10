@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f3ee" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="分镜表" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
+    <title>分镜表格 App</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <h1>分镜表格</h1>
+        <p class="topbar-sub">左侧管理项目，右侧进行创作与整理导出</p>
+      </header>
+      <div class="workspace">
+        <aside class="sidebar" aria-label="项目栏">
+          <section class="side-group">
+            <h2>项目</h2>
+            <select id="project-select" aria-label="项目选择"></select>
+            <button id="new-project-btn" type="button">新建项目</button>
+            <button id="rename-project-btn" type="button">重命名项目</button>
+            <button id="delete-project-btn" type="button" class="danger">删除项目</button>
+            <button id="export-project-btn" type="button">导出项目包</button>
+            <button id="import-project-btn" type="button">导入项目包</button>
+            <input id="import-project-input" type="file" accept=".json,application/json" hidden />
+          </section>
+
+          <section class="side-group">
+            <h2>创作</h2>
+            <button id="open-ai-btn" type="button">AI 生成图</button>
+            <button id="toggle-editor-btn" type="button">隐藏编辑区</button>
+            <button id="add-empty-btn" type="button">新增空白镜头</button>
+            <button id="clear-btn" type="button" class="danger">清空当前项目</button>
+          </section>
+
+          <section class="side-group">
+            <h2>导出</h2>
+            <label class="toggle-line">
+              <input id="export-clean-toggle" type="checkbox" />
+              导出时纯净视图（隐藏项目栏）
+            </label>
+            <div class="export-size-grid">
+              <label>
+                桌面每页镜头
+                <input id="export-shots-desktop" type="number" min="1" max="10" step="1" value="4" />
+              </label>
+              <label>
+                手机每页镜头
+                <input id="export-shots-mobile" type="number" min="1" max="10" step="1" value="4" />
+              </label>
+            </div>
+            <button id="build-report-btn" class="hero-btn" type="button">整理分镜表</button>
+            <button id="export-btn" type="button">导出 CSV</button>
+            <button id="pdf-btn" type="button">导出 PDF</button>
+            <button id="png-btn" type="button">导出 PNG</button>
+          </section>
+        </aside>
+
+        <section class="work-area">
+          <section id="dropzone" class="dropzone" aria-label="图片上传区域">
+            <input id="file-input" type="file" accept="image/*" multiple hidden />
+            <p>拖入图片到这里，或 <button id="pick-btn" type="button">选择图片</button></p>
+            <small>支持一次拖入多张，自动生成镜头卡。</small>
+          </section>
+
+          <section class="legend">
+            <span>字段：镜号 / 景别 / 场景 / 人员 / 时间 / 备注</span>
+            <span>提示：拖动卡片可排序</span>
+          </section>
+          <p id="status" class="status" aria-live="polite"></p>
+
+          <section id="board" class="board" aria-live="polite"></section>
+
+          <section id="report" class="report hidden">
+            <h2>分镜脚本表</h2>
+            <p id="report-meta" class="report-meta"></p>
+            <div class="report-table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>镜号</th>
+                    <th>缩略图</th>
+                    <th>景别</th>
+                    <th>场景</th>
+                    <th>人员</th>
+                    <th>时间</th>
+                    <th>备注</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="report-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="report-print" class="report-print hidden" aria-hidden="true"></section>
+        </section>
+      </div>
+    </main>
+
+    <template id="card-template">
+      <article class="card" draggable="true">
+        <div class="thumb-wrap">
+          <img class="thumb" alt="分镜图片预览" />
+          <label class="replace-btn">
+            替换图片
+            <input class="replace-input" type="file" accept="image/*" hidden />
+          </label>
+        </div>
+
+        <div class="fields">
+          <label>镜号<input data-field="shotNo" type="text" placeholder="001" /></label>
+          <label>
+            景别
+            <select data-field="shotType">
+              <option value="">选择景别</option>
+              <option>大全景</option>
+              <option>全景</option>
+              <option>中景</option>
+              <option>近景</option>
+              <option>特写</option>
+            </select>
+          </label>
+          <label>场景<input data-field="scene" type="text" placeholder="S1 客厅" /></label>
+          <label>人员<input data-field="people" type="text" placeholder="角色A, 角色B" /></label>
+          <label>时间<input data-field="time" type="time" step="60" /></label>
+          <label>备注<textarea data-field="notes" rows="3" placeholder="动作、台词、节奏点"></textarea></label>
+        </div>
+
+        <div class="card-actions">
+          <button data-action="up" type="button">上移</button>
+          <button data-action="down" type="button">下移</button>
+          <button data-action="duplicate" type="button">复制</button>
+          <button data-action="delete" type="button" class="danger">删除</button>
+        </div>
+      </article>
+    </template>
+
+    <dialog id="ai-modal" class="ai-modal">
+      <form method="dialog" class="ai-modal-body">
+        <header class="ai-modal-header">
+          <h3>AI 图片生成</h3>
+          <button id="ai-close-btn" type="submit">关闭</button>
+        </header>
+
+        <div class="ai-grid">
+          <label>
+            服务商
+            <select id="ai-provider">
+              <option value="openai">OpenAI / GPT（兼容）</option>
+              <option value="doubao">豆包（Ark 兼容）</option>
+              <option value="doubao_seedream5_fixed">豆包 Seedream 5（固定预设）</option>
+              <option value="custom">自定义</option>
+            </select>
+          </label>
+          <label>
+            Base URL
+            <input id="ai-base-url" type="url" placeholder="https://api.openai.com/v1" />
+          </label>
+          <label>
+            接口路径
+            <input id="ai-path" type="text" placeholder="/images/generations" />
+          </label>
+          <label>
+            API Key
+            <input id="ai-api-key" type="password" placeholder="sk-..." />
+          </label>
+          <label>
+            模型
+            <input id="ai-model" type="text" placeholder="gpt-image-1" />
+          </label>
+          <label>
+            尺寸
+            <select id="ai-size">
+              <option value="auto">自适应</option>
+              <option value="1024x1024">1024x1024</option>
+              <option value="1536x1024">1536x1024</option>
+              <option value="1024x1536">1024x1536</option>
+              <option value="custom">自由输入</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="ai-custom-size-wrap" class="ai-custom-size hidden">
+          <label>
+            自定义宽
+            <input id="ai-custom-width" type="number" min="256" step="1" placeholder="例如 1280" />
+          </label>
+          <label>
+            自定义高
+            <input id="ai-custom-height" type="number" min="256" step="1" placeholder="例如 720" />
+          </label>
+        </div>
+
+        <label class="ai-prompt">
+          分镜字段（会自动拼进提示词并回填）
+          <div class="ai-meta-grid">
+            <input id="ai-meta-shot-no" type="text" placeholder="镜号（如 010）" />
+            <select id="ai-meta-shot-type">
+              <option value="">景别（可选）</option>
+              <option>大全景</option>
+              <option>全景</option>
+              <option>中景</option>
+              <option>近景</option>
+              <option>特写</option>
+            </select>
+            <input id="ai-meta-scene" type="text" placeholder="场景（如 S2 夜晚街道）" />
+          </div>
+        </label>
+
+        <label class="ai-prompt">
+          提示词
+          <textarea id="ai-prompt" rows="4" placeholder="例如：电影感分镜，室内夜景，中景，人物背光，35mm"></textarea>
+        </label>
+        <label class="ai-prompt">
+          实际发送给 AI 的提示词（预览）
+          <textarea id="ai-prompt-preview" rows="3" readonly></textarea>
+        </label>
+
+        <div class="ai-actions">
+          <button id="ai-generate-btn" type="button">生成并加入分镜</button>
+        </div>
+        <p id="ai-status" class="ai-status"></p>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
